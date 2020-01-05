@@ -3,6 +3,12 @@ name = "vclock"
 version = "0.1.0"
 authors = ["Christian Mauduit (ufoot) <ufoot@ufoot.org>"]
 edition = "2018"
+description = "VClock is an experimental vector clock."
+license = "MIT"
+documentation = "https://docs.rs/crate/vclock"
+homepage = "https://gitlab.com/ufoot/vclock"
+repository = "https://gitlab.com/ufoot/vclock/tree/master"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
