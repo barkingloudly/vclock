@@ -7,6 +7,17 @@
 //!
 //! # Examples
 //!
+//! Basic usage:
+//!
+//! ```
+//! use vclock::VClock;
+//!
+//! let c1 = VClock::new("a");     // c1 is now a:1
+//! let mut c2 = VClock::new("b"); // c2 is now b:1
+//! c2.incr("a");                  // c1 is now a:1,b:1
+//! assert!(c1 < c2, "c1 is a parent of c2");
+//! ```
+//!
 //! Here is how to generate a conflict:
 //!
 //! ```
