@@ -6,8 +6,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 /// VClock encapsulates the vector clock data. Internally it's just
-/// a simple hash map containing integers. It also requires the
-/// keys to have the Debug trait.
+/// a simple hash map containing integers.
 ///
 /// # Examples
 ///
@@ -27,25 +26,27 @@ pub struct VClock<K>
 where
     K: std::cmp::Eq,
     K: std::hash::Hash,
-    K: std::fmt::Debug,
 {
     c: HashMap<K, u64>,
 }
 
-/// Vector clock useful to track what is the most up-to-date version of something,
-/// knowing that several actors are contributing. The idea is that for each key
-/// the number of updates is kept.
 impl<K> VClock<K>
 where
     K: std::cmp::Eq,
     K: std::hash::Hash,
-    K: std::marker::Copy,
-    K: std::fmt::Display,
-    K: std::fmt::Debug,
 {
     /// Initialize a new vector clock with only one contributor.
     /// It is useful to avoid the new() then incr() pattern, as it
     /// performs both operations at once, without copying anything.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use vclock::VClock;
+    //
+    /// let c = VClock::new("foo"); // c is now foo:1
+    /// assert_eq!("{len:1,total:1,max:{\"foo\":1}}", format!("{}", c));
+    /// ```
     pub fn new(key: K) -> VClock<K> {
         let mut first = VClock {
             c: HashMap::<K, u64>::default(),
@@ -55,16 +56,141 @@ where
     }
 
     /// Increment a vector clock in-place.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use vclock::VClock;
+    //
+    /// let mut c = VClock::new("foo"); // c is now foo:1
+    /// c.incr("foo"); // c is now foo:2
+    /// c.incr("bar"); // c is now foo:2, bar:1
+    /// assert_eq!("{len:2,total:3,max:{\"foo\":2}}", format!("{}", c));
+    /// ```
     pub fn incr(&mut self, key: K) {
-        self.c.insert(
-            key,
-            match self.c.get(&key) {
-                Some(v) => v + 1,
-                None => 1,
-            },
-        );
+        let value = match self.c.get(&key) {
+            Some(v) => v + 1,
+            None => 1,
+        };
+        self.c.insert(key, value);
     }
 
+    /// Returns the counter associated to a given key.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use vclock::VClock;
+    //
+    /// let mut c = VClock::new("foo"); // c is now foo:1
+    /// c.incr("foo"); // c is now foo:2
+    /// c.incr("bar"); // c is now foo:2, bar:1
+    /// assert_eq!(2u64, c.get("foo").unwrap());
+    /// assert_eq!(1u64, c.get("bar").unwrap());
+    /// assert_eq!(None, c.get("unknown"));
+    /// ```
+    pub fn get(&self, key: K) -> Option<u64> {
+        match self.c.get(&key) {
+            Some(v) => Some(*v),
+            None => None,
+        }
+    }
+
+    /// Returns the number of elements in a VClock.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use vclock::VClock;
+    //
+    /// let mut c = VClock::default();
+    /// assert_eq!(0, c.len());
+    /// c.incr("foo");
+    /// assert_eq!(1, c.len());
+    /// c.incr("foo");
+    /// assert_eq!(1, c.len());
+    /// c.incr("bar");
+    /// assert_eq!(2, c.len());
+    /// ```
+    pub fn len(&self) -> usize {
+        return self.c.len();
+    }
+
+    /// Returns the total of all values.
+    ///
+    /// This is mostly a debugging feature. You should not use this to compare
+    /// clocks. If a < b then a.total() < b.total() but the reciprocity is not true.
+    /// However it can be useful to have this information when auditing behavior.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use vclock::VClock;
+    //
+    /// let mut c = VClock::default();
+    /// assert_eq!(0, c.total());
+    /// c.incr("foo");
+    /// assert_eq!(1, c.total());
+    /// c.incr("foo");
+    /// assert_eq!(2, c.total());
+    /// c.incr("bar");
+    /// assert_eq!(3, c.total());
+    /// ```
+    pub fn total(&self) -> u64 {
+        let mut total: u64 = 0;
+        for (_, v) in &(self.c) {
+            total += *v;
+        }
+        total
+    }
+
+    /// Returns the total of all values.
+    ///
+    /// This is mostly a debugging feature. You should not use this to compare
+    /// clocks. If a < b then a.total() < b.total() but the reciprocity is not true.
+    /// However it can be useful to have this information when auditing behavior.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use vclock::VClock;
+    //
+    /// let mut c = VClock::default();
+    /// assert_eq!(None, c.max());
+    /// c.incr("foo");
+    /// assert_eq!(Some((&"foo",1)), c.max());
+    /// c.incr("foo");
+    /// assert_eq!(Some((&"foo",2)), c.max());
+    /// c.incr("bar");
+    /// assert_eq!(Some((&"foo",2)), c.max());
+    /// ```
+    pub fn max(&self) -> Option<(&K, u64)> {
+        let mut max_value: u64 = 0;
+        let mut max_key: Option<&K> = None;
+        for (k, v) in &(self.c) {
+            if max_value < *v {
+                max_key = Some(&k);
+                max_value = *v;
+            }
+        }
+        match max_key {
+            Some(k) => Some((k, max_value)),
+            _ => None,
+        }
+    }
+}
+
+/// Clone trait is required for key on those methods as they actually
+/// do duplicate keys to create a new clock. While technically speaking,
+/// it might be doable to not do this, and keep references on keys, in
+/// practice it builds up interdependencies between keys and induces
+/// a lot of micro management of references and lifetimes.
+impl<K> VClock<K>
+where
+    K: std::cmp::Eq,
+    K: std::hash::Hash,
+    K: std::clone::Clone,
+{
     /// Increments a vector clock and does a fresh copy. There's no default
     /// implementation of Copy for the vector clock as, indeed, copying it
     /// can be expensive so it's not a good practice to copy it.
@@ -76,36 +202,43 @@ where
         // copy all the existing keys, which are not the key we increment
         for (k, v) in &(self.c) {
             if &key != k {
-                nxt.c.insert(*k, *v);
+                nxt.c.insert(k.clone(), *v);
             }
         }
         // increment and copy the key we want to increment, specifically
-        nxt.c.insert(
-            key,
-            match self.c.get(&key) {
-                Some(v) => v + 1,
-                None => 1,
-            },
-        );
+        let value = match self.c.get(&key) {
+            Some(v) => v + 1,
+            None => 1,
+        };
+        nxt.c.insert(key.clone(), value);
         // pass the copy
         nxt
     }
 
-    /// Returns the counter associated to a given key.
-    pub fn get(&self, key: K) -> Option<u64> {
-        match self.c.get(&key) {
-            Some(v) => Some(*v),
-            None => None,
-        }
-    }
-
     /// Merge two keys, taking the max of all history points.
+    ///
+    /// If there is a parentship between a and b, merge simply
+    /// returns the greater of both. Merge creates a new object
+    /// with clones of all keys, so it can be a costly operation
+    /// on big keys.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use vclock::VClock;
+    //
+    /// let c1 = VClock::new("a");
+    /// let c2 = VClock::new("b");
+    /// let c3 = c1.merge(&c2);
+    /// assert_eq!(1u64, c3.get("a").unwrap());
+    /// assert_eq!(1u64, c3.get("b").unwrap());
+    /// ```
     pub fn merge(&self, other: &VClock<K>) -> VClock<K> {
         // create a new copy
         let mut nxt = VClock::<K>::default();
         // copy all the existing keys, which are not the key we increment
         for (k, v) in &(self.c) {
-            nxt.c.insert(*k, *v);
+            nxt.c.insert(k.clone(), *v);
         }
         // copy all the existing keys for other, which are not the key we increment
         for (k, v) in &(other.c) {
@@ -114,7 +247,7 @@ where
                 Some(v2) => v2 < v,
                 None => true,
             } {
-                nxt.c.insert(*k, *v);
+                nxt.c.insert(k.clone(), *v);
             }
         }
         // pass the copy
@@ -122,7 +255,7 @@ where
     }
 }
 
-/// Vector c are partially ordered, and this is exactly what they
+/// Vector clocks are partially ordered, and this is exactly what they
 /// are useful for. If the order is explicitly returned, it means one
 /// can fast-forward or fast-rewind from one point to the other in history.
 /// If not, that is, if None is returned, it means there is a conflict, and
@@ -131,10 +264,35 @@ impl<K> std::cmp::PartialOrd for VClock<K>
 where
     K: std::cmp::Eq,
     K: std::hash::Hash,
-    K: std::marker::Copy,
-    K: std::fmt::Display,
-    K: std::fmt::Debug,
 {
+    /// Compares the vector clock with another one. Note that really,
+    /// this is a partial order, if both a<=b and a>=b return false,
+    /// it means there is no direct parentship link between clocks.
+    ///
+    /// ```
+    /// use vclock::VClock;
+    /// use std::cmp::Ordering;
+    ///
+    /// // Two vector clocks holding same values are equal.
+    /// let mut c1 = VClock::new("a");
+    /// let mut c2 = VClock::new("a");
+    /// assert_eq!(Some(Ordering::Equal), c1.partial_cmp(&c2));
+    /// assert!(c1 <= c2);
+    ///
+    /// // Two vector clocks with a direct parentship are ordered.
+    /// c2.incr("a");
+    /// assert_eq!(Some(Ordering::Less), c1.partial_cmp(&c2));
+    /// assert_eq!(Some(Ordering::Greater), c2.partial_cmp(&c1));
+    /// assert!(c1 < c2);
+    /// assert!(c2 > c1);
+    ///
+    /// // Two vector clocks without a direct parentship are not ordered.
+    /// c1.incr("b");
+    /// assert_eq!(None, c1.partial_cmp(&c2));
+    /// assert_eq!(None, c2.partial_cmp(&c1));
+    /// assert!(!(c1 < c2));
+    /// assert!(!(c2 > c1));
+    /// ```
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         let mut has_less: bool = false;
         let mut has_greater: bool = false;
@@ -213,9 +371,21 @@ impl<K> From<HashMap<K, u64>> for VClock<K>
 where
     K: std::cmp::Eq,
     K: std::hash::Hash,
-    K: std::marker::Copy,
-    K: std::fmt::Debug,
 {
+    /// Build a vector clock from a hash map containing u64 values.
+    ///
+    /// ```
+    /// use vclock::VClock;
+    /// use std::collections::HashMap;
+    ///
+    /// let mut m = HashMap::new();
+    /// m.insert("a", 3u64);
+    /// m.insert("b", 5u64);
+    /// let c = VClock::from(m);
+    /// assert_eq!(2, c.len());
+    /// assert_eq!(3, c.get("a").unwrap());
+    /// assert_eq!(5, c.get("b").unwrap());
+    /// ```
     fn from(src: HashMap<K, u64>) -> VClock<K> {
         VClock { c: src }
     }
@@ -225,25 +395,25 @@ impl<K> std::fmt::Display for VClock<K>
 where
     K: std::cmp::Eq,
     K: std::hash::Hash,
-    K: std::marker::Copy,
     K: std::fmt::Display,
-    K: std::fmt::Debug,
 {
+    /// Pretty print the vector clock, it does not dump all the data,
+    /// only a few key values.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut total: u64 = 0;
         let mut max_value: u64 = 0;
-        let mut max_key: Option<K> = None;
+        let mut max_key: Option<&K> = None;
         for (k, v) in &(self.c) {
             total += *v;
             if max_value < *v {
-                max_key = Some(*k);
+                max_key = Some(&k);
                 max_value = *v;
             }
         }
         match max_key {
             Some(v) => write!(
                 f,
-                "{{len:{},total:{},max:{{{}:{}}}}}",
+                "{{len:{},total:{},max:{{\"{}\":{}}}}}",
                 self.c.len(),
                 total,
                 v,
@@ -258,10 +428,8 @@ impl<K> std::default::Default for VClock<K>
 where
     K: std::cmp::Eq,
     K: std::hash::Hash,
-    K: std::marker::Copy,
-    K: std::fmt::Display,
-    K: std::fmt::Debug,
 {
+    /// Return a VClock with no history at all.
     fn default() -> VClock<K> {
         VClock {
             c: HashMap::<K, u64>::new(),
@@ -375,12 +543,15 @@ fn test_vclock_fmt() {
     let mut k = VClock::<i32>::default();
     assert_eq!(String::from("{len:0,total:0}"), format!("{}", k));
     k.incr(42);
-    assert_eq!(String::from("{len:1,total:1,max:{42:1}}"), format!("{}", k));
+    assert_eq!(
+        String::from("{len:1,total:1,max:{\"42\":1}}"),
+        format!("{}", k)
+    );
     k.incr(421);
     k.incr(421);
     k.incr(421);
     assert_eq!(
-        String::from("{len:2,total:4,max:{421:3}}"),
+        String::from("{len:2,total:4,max:{\"421\":3}}"),
         format!("{}", k)
     );
 }
