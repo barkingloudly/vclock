@@ -1,3 +1,5 @@
+2020-01-25: relaxed constraints, added len, total, max and tagged 0.2.1
+
 2020-01-11: changed to use u64 and added merge func, tagged 0.2.0
 
 2020-01-05: initial release, tagged 0.1.0
