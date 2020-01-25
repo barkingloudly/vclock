@@ -196,6 +196,17 @@ where
     /// can be expensive so it's not a good practice to copy it.
     /// However, when incrementing, we might want to actually get a fresh
     /// copy, as typically this incremented clock might refer to a new object.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use vclock::VClock;
+    //
+    /// let c1 = VClock::new("a");
+    /// let c2 = c1.next("a");
+    /// assert_eq!(1, c1.get("a").unwrap());
+    /// assert_eq!(2, c2.get("a").unwrap());
+    /// ```
     pub fn next(&self, key: K) -> VClock<K> {
         // create a new copy
         let mut nxt = VClock::<K>::default();
@@ -268,6 +279,8 @@ where
     /// Compares the vector clock with another one. Note that really,
     /// this is a partial order, if both a<=b and a>=b return false,
     /// it means there is no direct parentship link between clocks.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use vclock::VClock;
@@ -374,6 +387,8 @@ where
 {
     /// Build a vector clock from a hash map containing u64 values.
     ///
+    /// # Examples
+    ///
     /// ```
     /// use vclock::VClock;
     /// use std::collections::HashMap;
@@ -399,6 +414,20 @@ where
 {
     /// Pretty print the vector clock, it does not dump all the data,
     /// only a few key values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use vclock::VClock;
+    ///
+    /// let mut c = VClock::default();
+    /// assert_eq!("{len:0,total:0}", format!("{}", c));
+    /// c.incr("a");
+    /// assert_eq!("{len:1,total:1,max:{\"a\":1}}", format!("{}", c));
+    /// c.incr("b");
+    /// c.incr("b");
+    /// assert_eq!("{len:2,total:3,max:{\"b\":2}}", format!("{}", c));
+    /// ```
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut total: u64 = 0;
         let mut max_value: u64 = 0;
@@ -430,6 +459,20 @@ where
     K: std::hash::Hash,
 {
     /// Return a VClock with no history at all.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use vclock::VClock;
+    ///
+    /// let c1: VClock<&str> = VClock::default();
+    /// assert_eq!(0, c1.len());
+    /// assert_eq!(0, c1.total());
+    /// let mut c2 = VClock::default();
+    /// assert_eq!(0, c1.len());
+    /// assert_eq!(0, c1.total());
+    /// c2.incr("a"); // type of c2 is inferred from this call
+    /// ```
     fn default() -> VClock<K> {
         VClock {
             c: HashMap::<K, u64>::new(),
