@@ -144,10 +144,10 @@ where
         total
     }
 
-    /// Returns the total of all values.
+    /// Returns the max key,value pair.
     ///
     /// This is mostly a debugging feature. You should not use this to compare
-    /// clocks. If a < b then a.total() < b.total() but the reciprocity is not true.
+    /// clocks. If a < b then a.max() <= b.max() but the reciprocity is not true.
     /// However it can be useful to have this information when auditing behavior.
     ///
     /// # Examples
@@ -158,11 +158,11 @@ where
     /// let mut c = VClock::default();
     /// assert_eq!(None, c.max());
     /// c.incr("foo");
-    /// assert_eq!(Some((&"foo",1)), c.max());
+    /// assert_eq!((&"foo",1), c.max().unwrap());
     /// c.incr("foo");
-    /// assert_eq!(Some((&"foo",2)), c.max());
+    /// assert_eq!((&"foo",2), c.max().unwrap());
     /// c.incr("bar");
-    /// assert_eq!(Some((&"foo",2)), c.max());
+    /// assert_eq!((&"foo",2), c.max().unwrap());
     /// ```
     pub fn max(&self) -> Option<(&K, u64)> {
         let mut max_value: u64 = 0;
