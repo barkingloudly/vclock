@@ -31,8 +31,8 @@
 //! c1.incr("a");
 //! c1.incr("b"); // c1 is now a:4, b:1
 //!
-//! let c2 = c1.next("a"); // c2 is now a:5,b:1
-//! let c3 = c1.next("b"); // c3 is now a:4,b:2
+//! let c2 = c1.clone().next("a"); // c2 is now a:5,b:1
+//! let c3 = c1.clone().next("b"); // c3 is now a:4,b:2
 //!
 //! // Now let's assert there is a relationship c1 -> c2 and c1 -> c3.
 //! // By relationship, we mean that there is a forward path of updates
@@ -81,12 +81,12 @@
 //! // A dummy object with maintains a vector clock along with some data,
 //! // here just a byte, to avoid complexifying the example with other issues.
 //! #[derive(Default)]
-//! struct Obj<'a> {
-//!     vc: VClock<&'a str>,
+//! struct Obj {
+//!     vc: VClock<String>,
 //!     val: u8,
 //! }
 //!
-//! impl<'a> Obj<'a> {
+//! impl Obj {
 //!     // Update the data stored within the object. If there's no conflict,
 //!     // the data is updated, the clock is set to the last value received,
 //!     // and the function returns None.
@@ -94,9 +94,9 @@
 //!     // with the merged clock.
 //!     fn update(
 //!         &mut self,
-//!         remote_clock: &VClock<&'a str>,
+//!         remote_clock: &VClock<String>,
 //!         val: u8,
-//!     ) -> Option<(u8, VClock<&str>)> {
+//!     ) -> Option<(u8, VClock<String>)> {
 //!         if &self.vc < remote_clock {
 //!             // Update value, no conflict
 //!             self.vc = remote_clock.clone();
@@ -105,38 +105,41 @@
 //!         } else {
 //!             // History conflict, update the clock, return the value,
 //!             // and let the caller deal with it.
-//!             Some((self.val, self.vc.merge(remote_clock)))
+//!             Some((self.val, self.vc.clone().combine(remote_clock)))
 //!         }
 //!     }
 //! }
 //!
 //! let mut obj = Obj::default();
-//! let mut h1 = HashMap::<&str,u64>::new();
-//! h1.insert("a", 42);
-//! let c1 = VClock::<&str>::from(h1);
+//! let mut h1 = HashMap::<String, u64>::new();
+//! h1.insert("a".to_string(), 42);
+//! let c1 = VClock::<String>::from(h1);
 //! assert_eq!(None, obj.update(&c1, 10), "no history, no problem");
 //!
-//! let mut h2 = HashMap::<&str,u64>::new();
-//! h2.insert("a", 42);
-//! h2.insert("b", 10);
-//! let c2 = VClock::<&str>::from(h2);
+//! let mut h2 = HashMap::<String,u64>::new();
+//! h2.insert("a".to_string(), 42);
+//! h2.insert("b".to_string(), 10);
+//! let c2 = VClock::<String>::from(h2);
 //! assert_eq!(None, obj.update(&c2, 100), "forward history, updating");
 //!
-//! let mut h3 = HashMap::<&str,u64>::new();
-//! h3.insert("a", 43);
-//! h3.insert("b", 9);
-//! let c3 = VClock::<&str>::from(h3);
-//! let mut h4 = HashMap::<&str,u64>::new();
-//! h4.insert("a", 43);
-//! h4.insert("b", 10);
-//! let c4 = VClock::<&str>::from(h4);
+//! let mut h3 = HashMap::<String,u64>::new();
+//! h3.insert("a".to_string(), 43);
+//! h3.insert("b".to_string(), 9);
+//! let c3 = VClock::<String>::from(h3);
+//! let mut h4 = HashMap::<String,u64>::new();
+//! h4.insert("a".to_string(), 43);
+//! h4.insert("b".to_string(), 10);
+//! let c4 = VClock::<String>::from(h4);
 //! assert_eq!(Some((100, c4)), obj.update(&c3, 50), "conflict between keys");
 //! ```
 
 extern crate serde;
 
+use std::clone::Clone;
+use std::cmp::Eq;
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::hash::Hash;
 
 use serde::{Deserialize, Serialize};
 
@@ -147,7 +150,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// ```
 /// use vclock::VClock;
-//
+///
 /// let mut c1: VClock<&str>=VClock::default();
 /// c1.incr("a");
 /// c1.incr("a");
@@ -156,19 +159,17 @@ use serde::{Deserialize, Serialize};
 /// c1.incr("b");
 /// // c1 is now a:4, b:1
 /// ```
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[derive(Debug, Eq, PartialEq, Serialize, Deserialize, Clone)]
 pub struct VClock<K>
 where
-    K: std::cmp::Eq,
-    K: std::hash::Hash,
+    K: Eq + Hash,
 {
     c: HashMap<K, u64>,
 }
 
 impl<K> VClock<K>
 where
-    K: std::cmp::Eq,
-    K: std::hash::Hash,
+    K: Eq + Hash,
 {
     /// Initialize a new vector clock with only one contributor.
     /// It is useful to avoid the new() then incr() pattern, as it
@@ -178,7 +179,7 @@ where
     ///
     /// ```
     /// use vclock::VClock;
-    //
+    ///
     /// let c = VClock::new("foo"); // c is now foo:1
     /// assert_eq!("{len:1,total:1,max:{\"foo\":1}}", format!("{}", c));
     /// ```
@@ -190,33 +191,13 @@ where
         first
     }
 
-    /// Increment a vector clock in-place.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use vclock::VClock;
-    //
-    /// let mut c = VClock::new("foo"); // c is now foo:1
-    /// c.incr("foo"); // c is now foo:2
-    /// c.incr("bar"); // c is now foo:2, bar:1
-    /// assert_eq!("{len:2,total:3,max:{\"foo\":2}}", format!("{}", c));
-    /// ```
-    pub fn incr(&mut self, key: K) {
-        let value = match self.c.get(&key) {
-            Some(v) => v + 1,
-            None => 1,
-        };
-        self.c.insert(key, value);
-    }
-
     /// Returns the counter associated to a given key.
     ///
     /// # Examples
     ///
     /// ```
     /// use vclock::VClock;
-    //
+    ///
     /// let mut c = VClock::new("foo"); // c is now foo:1
     /// c.incr("foo"); // c is now foo:2
     /// c.incr("bar"); // c is now foo:2, bar:1
@@ -237,7 +218,7 @@ where
     ///
     /// ```
     /// use vclock::VClock;
-    //
+    ///
     /// let mut c = VClock::default();
     /// assert_eq!(0, c.len());
     /// c.incr("foo");
@@ -261,7 +242,7 @@ where
     ///
     /// ```
     /// use vclock::VClock;
-    //
+    ///
     /// let mut c = VClock::default();
     /// assert_eq!(0, c.total());
     /// c.incr("foo");
@@ -289,7 +270,7 @@ where
     ///
     /// ```
     /// use vclock::VClock;
-    //
+    ///
     /// let mut c = VClock::default();
     /// assert_eq!(None, c.max());
     /// c.incr("foo");
@@ -313,60 +294,29 @@ where
             _ => None,
         }
     }
-}
 
-/// Clone trait is required for key on those methods as they actually
-/// do duplicate keys to create a new clock. While technically speaking,
-/// it might be doable to not do this, and keep references on keys, in
-/// practice it builds up interdependencies between keys and induces
-/// a lot of micro management of references and lifetimes.
-impl<K> VClock<K>
-where
-    K: std::cmp::Eq,
-    K: std::hash::Hash,
-    K: std::clone::Clone,
-{
-    /// Increments a vector clock and does a fresh copy. There's no default
-    /// implementation of Copy for the vector clock as, indeed, copying it
-    /// can be expensive so it's not a good practice to copy it.
-    /// However, when incrementing, we might want to actually get a fresh
-    /// copy, as typically this incremented clock might refer to a new object.
+    /// Increment a vector clock in-place.
     ///
     /// # Examples
     ///
     /// ```
     /// use vclock::VClock;
-    //
-    /// let c1 = VClock::new("a");
-    /// let c2 = c1.next("a");
-    /// assert_eq!(1, c1.get("a").unwrap());
-    /// assert_eq!(2, c2.get("a").unwrap());
+    ///
+    /// let mut c = VClock::new("foo"); // c is now foo:1
+    /// c.incr("foo"); // c is now foo:2
+    /// c.incr("bar"); // c is now foo:2, bar:1
+    /// assert_eq!("{len:2,total:3,max:{\"foo\":2}}", format!("{}", c));
     /// ```
-    pub fn next(&self, key: K) -> VClock<K> {
-        // create a new copy
-        let mut nxt = VClock::<K>::default();
-        // copy all the existing keys, which are not the key we increment
-        for (k, v) in &(self.c) {
-            if &key != k {
-                nxt.c.insert(k.clone(), *v);
-            }
-        }
-        // increment and copy the key we want to increment, specifically
+    pub fn incr(&mut self, key: K) {
         let value = match self.c.get(&key) {
             Some(v) => v + 1,
             None => 1,
         };
-        nxt.c.insert(key.clone(), value);
-        // pass the copy
-        nxt
+        self.c.insert(key, value);
     }
 
-    /// Merge two keys, taking the max of all history points.
-    ///
-    /// If there is a parentship between a and b, merge simply
-    /// returns the greater of both. Merge creates a new object
-    /// with clones of all keys, so it can be a costly operation
-    /// on big keys.
+    /// Increments a vector clock. This is pretty much the same as incr
+    /// but it takes ownership on the vector clock.
     ///
     /// # Examples
     ///
@@ -374,18 +324,37 @@ where
     /// use vclock::VClock;
     //
     /// let c1 = VClock::new("a");
-    /// let c2 = VClock::new("b");
-    /// let c3 = c1.merge(&c2);
-    /// assert_eq!(1u64, c3.get("a").unwrap());
-    /// assert_eq!(1u64, c3.get("b").unwrap());
+    /// let c2 = c1.clone().next("a").next("b");
+    /// assert_eq!(2, c2.get("a").unwrap());
+    /// assert_eq!(1, c2.get("b").unwrap());
     /// ```
-    pub fn merge(&self, other: &VClock<K>) -> VClock<K> {
-        // create a new copy
-        let mut nxt = VClock::<K>::default();
-        // copy all the existing keys, which are not the key we increment
-        for (k, v) in &(self.c) {
-            nxt.c.insert(k.clone(), *v);
-        }
+    pub fn next(mut self, key: K) -> VClock<K> {
+        self.incr(key);
+        self
+    }
+}
+
+// Merge & combine operations do need K to have Clone trait.
+impl<K> VClock<K>
+where
+    K: Eq + Hash + Clone,
+{
+    /// Merge a key with another one, in-place, taking the max of all history points.
+    ///
+    /// If there is a parentship between a and b, just take the greater of both.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use vclock::VClock;
+    ///
+    /// let mut c1 = VClock::new("a");
+    /// let c2 = VClock::new("b");
+    /// c1.merge(&c2);
+    /// assert_eq!(1u64, c1.get("a").unwrap());
+    /// assert_eq!(1u64, c1.get("b").unwrap());
+    /// ```
+    pub fn merge(&mut self, other: &VClock<K>) {
         // copy all the existing keys for other, which are not the key we increment
         for (k, v) in &(other.c) {
             // insert the key only if it's bigger than what we had
@@ -393,11 +362,31 @@ where
                 Some(v2) => v2 < v,
                 None => true,
             } {
-                nxt.c.insert(k.clone(), *v);
+                self.c.insert(k.clone(), *v);
             }
         }
-        // pass the copy
-        nxt
+    }
+
+    /// Combine a key with another one, taking ownership.
+    ///
+    /// If there is a parentship between a and b, just take the greater of both.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use vclock::VClock;
+    ///
+    /// let c1 = VClock::new("a");
+    /// let c2 = VClock::new("b");
+    /// let c3 = VClock::new("c");
+    /// let c4 = c1.combine(&c2).combine(&c3);
+    /// assert_eq!(1u64, c4.get("a").unwrap());
+    /// assert_eq!(1u64, c4.get("b").unwrap());
+    /// assert_eq!(1u64, c4.get("c").unwrap());
+    /// ```
+    pub fn combine(mut self, other: &VClock<K>) -> VClock<K> {
+        self.merge(other);
+        self
     }
 }
 
@@ -408,8 +397,7 @@ where
 /// no way to directly go to one point from the other.
 impl<K> std::cmp::PartialOrd for VClock<K>
 where
-    K: std::cmp::Eq,
-    K: std::hash::Hash,
+    K: Eq + Hash,
 {
     /// Compares the vector clock with another one. Note that really,
     /// this is a partial order, if both a<=b and a>=b return false,
@@ -517,8 +505,7 @@ where
 
 impl<K> From<HashMap<K, u64>> for VClock<K>
 where
-    K: std::cmp::Eq,
-    K: std::hash::Hash,
+    K: Eq + Hash,
 {
     /// Build a vector clock from a hash map containing u64 values.
     ///
@@ -541,10 +528,36 @@ where
     }
 }
 
+impl<K> From<VClock<K>> for HashMap<K, u64>
+where
+    K: Eq + Hash,
+{
+    /// Build a vector clock from a hash map containing u64 values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use vclock::VClock;
+    /// use std::collections::HashMap;
+    ///
+    /// let mut c = VClock::default();
+    /// c.incr("a");
+    /// c.incr("a");
+    /// c.incr("b");
+    /// let m = HashMap::from(c);
+    /// assert_eq!(2, m.len());
+    /// assert_eq!(&2, m.get("a").unwrap());
+    /// assert_eq!(&1, m.get("b").unwrap());
+    /// ```
+    fn from(src: VClock<K>) -> HashMap<K, u64> {
+        src.c
+    }
+}
+
 impl<K> std::fmt::Display for VClock<K>
 where
-    K: std::cmp::Eq,
-    K: std::hash::Hash,
+    K: Eq,
+    K: Hash,
     K: std::fmt::Display,
 {
     /// Pretty print the vector clock, it does not dump all the data,
@@ -590,8 +603,8 @@ where
 
 impl<K> std::default::Default for VClock<K>
 where
-    K: std::cmp::Eq,
-    K: std::hash::Hash,
+    K: Eq,
+    K: Hash,
 {
     /// Return a VClock with no history at all.
     ///
@@ -652,19 +665,19 @@ fn test_vclock_next() {
     let vc = VClock::<i16>::default();
     assert_eq!(None, vc.get(0));
 
-    let vc2 = vc.next(2);
+    let vc2 = vc.clone().next(2);
     assert_eq!(None, vc.get(0));
     assert_eq!(None, vc.get(2));
     assert_eq!(Some(1), vc2.get(2));
 
-    let vc3 = vc.next(3);
+    let vc3 = vc.clone().next(3);
     assert_eq!(None, vc.get(0));
     assert_eq!(None, vc.get(2));
     assert_eq!(None, vc.get(3));
     assert_eq!(Some(1), vc2.get(2));
     assert_eq!(Some(1), vc3.get(3));
 
-    let vc3i = vc3.next(3);
+    let vc3i = vc3.clone().next(3);
     assert_eq!(None, vc.get(0));
     assert_eq!(None, vc.get(2));
     assert_eq!(None, vc.get(3));
