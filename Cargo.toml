@@ -1,13 +1,13 @@
 [package]
 name = "vclock"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Christian Mauduit (ufoot) <ufoot@ufoot.org>"]
 edition = "2021"
 description = "VClock is an experimental vector clock."
 license = "MIT"
 documentation = "https://docs.rs/crate/vclock"
 homepage = "https://gitlab.com/liberecofr/vclock"
-repository = "https://gitlab.com/liberecofr/vclock/tree/master"
+repository = "https://gitlab.com/liberecofr/vclock/tree/main"
 readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

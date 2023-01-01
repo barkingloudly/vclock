@@ -5,13 +5,13 @@
 It offers a [partial order of events in a distributed system](https://en.wikipedia.org/wiki/Vector_clock).
 In practice, it implements [the rust partial order trait](https://doc.rust-lang.org/stable/std/cmp/trait.PartialOrd.html) over hash maps which maintain an integer count of each modification, per key.
 
-![VClock icon](https://gitlab.com/liberecofr/vclock/raw/master/vclock.png)
+![VClock icon](https://gitlab.com/liberecofr/vclock/raw/main/vclock.png)
 
 # Status
 
 For now this is a toy project, clearly *NOT* suitable for production use.
 
-[![Build Status](https://gitlab.com/liberecofr/vclock/badges/master/pipeline.svg)](https://gitlab.com/liberecofr/vclock/pipelines)
+[![Build Status](https://gitlab.com/liberecofr/vclock/badges/main/pipeline.svg)](https://gitlab.com/liberecofr/vclock/pipelines)
 
 # Usage
 
@@ -28,7 +28,7 @@ assert!(c1 < c2, "c1 is a parent of c2");
 
 * [crate](https://crates.io/crates/vclock) on crates.io
 * [doc](https://docs.rs/vclock/) on docs.rs
-* [source](https://gitlab.com/liberecofr/vclock/tree/master) on gitlab.com
+* [source](https://gitlab.com/liberecofr/vclock/tree/main) on gitlab.com
 
 # License
 
