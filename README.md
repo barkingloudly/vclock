@@ -62,6 +62,14 @@ This is not the result of thorough, intensive benchmarking, but we can at least
 infer that one significant game changer, when comparing, is the length of the vector clocks.
 It grows more or less linearily as their size increases.
 
+To run the benchmarks:
+
+```shell
+cd bench
+rustup default nightly
+cargo bench
+```
+
 # Links
 
 * [crate](https://crates.io/crates/vclock) on crates.io
