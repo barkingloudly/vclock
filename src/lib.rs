@@ -167,7 +167,16 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::ops::{Add, AddAssign};
 
-/// A vector clock using a u8 counter.
+/// Vector clock using u8 counters.
+///
+/// About capacity: after 256 updates, this
+/// will overflow and yield false results.
+/// Use only if you really want to save memory
+/// space (not sure you would save anything
+/// on modern hardware) of for prototyping.
+///
+/// When it overflows, it will panic() in debug
+/// mode, and silently ignore in release mode.
 ///
 /// # Examples
 ///
@@ -185,7 +194,14 @@ use std::ops::{Add, AddAssign};
 /// ```
 pub type VClock8<K> = VClock<K, u8>;
 
-/// A vector clock using a u16 counter.
+/// Vector clock using u16 counters.
+///
+/// About capacity: considering a computer which
+/// would increase the clock for a given key,
+/// at a constant rate of 1000 updates/sec,
+/// the clock would be filled after 1 minute.
+/// Keep this is mind when using this type.
+/// Napking math: `pow(2,16)/(1000*60)`.
 ///
 /// # Examples
 ///
@@ -203,7 +219,16 @@ pub type VClock8<K> = VClock<K, u8>;
 /// ```
 pub type VClock16<K> = VClock<K, u16>;
 
-/// A vector clock using a u32 counter.
+/// Vector clock using u32 counters.
+///
+/// About capacity: considering a computer which
+/// would increase the clock for a given key,
+/// at a constant rate of 1000 updates/sec,
+/// the clock would be filled after about 50 days.
+/// So this is "large", but the capacity
+/// [can be reached](https://www.google.com/search?q=windows+95+49.7+days)
+/// under edge cases, yet realistic conditions.
+/// Napkin math: `pow(2,32)/(1000*24*3600) -> 50`
 ///
 /// # Examples
 ///
@@ -221,7 +246,19 @@ pub type VClock16<K> = VClock<K, u16>;
 /// ```
 pub type VClock32<K> = VClock<K, u32>;
 
-/// A vector clock using a u64 counter.
+/// Vector clock using u64 counters. In doubt, use this.
+///
+/// About capacity: considering a computer which
+/// would increase the clock for a given key,
+/// at a constant rate of 1 billion updates/sec
+/// (current benchmarks tend to show this is very optimistic
+/// on 2023 hardware) then it would take about
+/// 500 years to reach the maximum capacity, updating
+/// the same key only, constantly. This is, really,
+/// a worse-case scenario.
+/// Napkin math: `pow(2,64)/(1e9*24*3600*365) -> 585`
+///
+/// TL;DR this is big enough.
 ///
 /// # Examples
 ///
@@ -239,7 +276,12 @@ pub type VClock32<K> = VClock<K, u32>;
 /// ```
 pub type VClock64<K> = VClock<K, u64>;
 
-/// A vector clock using a u128 counter.
+/// Vector clock using u128 counters.
+///
+/// This probably way too large for most practical usage,
+/// it would take billions of billions of years to fill such
+/// a clock on current hardware.
+/// Napkin math: `math.pow(2,128)/(1e9*24*3600*365) -> 1e22`
 ///
 /// # Examples
 ///
@@ -257,9 +299,15 @@ pub type VClock64<K> = VClock<K, u64>;
 /// ```
 pub type VClock128<K> = VClock<K, u128>;
 
-/// A vector clock using a bigint counter.
+/// Vector clock using bigint counters.
 ///
 /// Requires feature "bigint".
+///
+/// Normally a `Vector64` or even `Vector128`
+/// should be good enough for all cases,
+/// but this is here "just in case" the standard
+/// capacities do not fit. Also serves as a practical
+/// proof that you're not limited by Rust primitive types.
 ///
 /// # Examples
 ///
@@ -280,8 +328,20 @@ pub type VClock128<K> = VClock<K, u128>;
 #[cfg(feature = "bigint")]
 pub type VClockBig<K> = VClock<K, BigUint>;
 
-/// VClock encapsulates the vector clock data. Internally it's just
-/// a simple hash map containing integers.
+/// Vector clock with generic types.
+///
+/// Internally, it is just simple hash map containing integers,
+/// or at least something you can increase and compare.
+///
+/// The key can be anything which can be hashed and cloned.
+///
+/// The key and counter both need to support Clone as internally,
+/// especially when merging, some copies need to be made. The
+/// implementation tries to call `.clone()` as rarely as possible.
+///
+/// Sometimes the Rust compiler can infer the type of the counter,
+/// but it may not always be the case. Type aliases, such as
+/// `VClock64`, are here as syntaxic sugar.
 ///
 /// # Examples
 ///
@@ -941,5 +1001,14 @@ mod tests {
         assert_eq!("{len: 1, weight: 3, max: {\"k1\": 2}}", format!("{}", &vc1));
         let vc2 = vc1.clone().next(&"k2");
         assert!(vc1 < vc2);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_vclock_overflow() {
+        let mut vc = VClock8::default();
+        for _ in 0..1000 {
+            vc.incr(&"a");
+        }
     }
 }
