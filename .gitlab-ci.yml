@@ -23,20 +23,17 @@ release:
   script:
     - cargo build --release
 
-test:
+test_default:
   stage: test
   script:
     - cargo test
 
-test_serde:
-  stage: test
-  script:
-    - cargo test --features=serde
-
-test_bigint:
+test_features:
   stage: test
   script:
     - cargo test --features=bigint
+    - cargo test --features=serde
+    - cargo test --features=bigint,serde
 
 bench:
   image: rustlang/rust:nightly

@@ -1,6 +1,6 @@
 [package]
 name = "vclock"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Christian Mauduit (ufoot) <ufoot@ufoot.org>"]
 edition = "2021"
 description = "VClock is a vector clock."
@@ -28,3 +28,6 @@ num-bigint = "0.4"
 [features]
 serde = ["dep:serde"]
 bigint = ["dep:num-bigint"]
+
+[package.metadata.docs.rs]
+all-features = true

@@ -154,7 +154,12 @@
 //! ```
 
 #[cfg(feature = "bigint")]
-use num_bigint::BigUint;
+pub mod bigint {
+    pub use num_bigint::BigUint;
+}
+
+#[cfg(feature = "bigint")]
+use crate::bigint::BigUint;
 use std::clone::Clone;
 use std::cmp::Eq;
 use std::cmp::Ordering;
