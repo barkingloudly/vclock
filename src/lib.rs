@@ -17,7 +17,7 @@
 //! let c1 = VClock::<&str, u64>::new("a");  // c1 is now a:0
 //! let mut c2 = VClock::new("b");           // c2 is now b:0
 //! c2.incr(&"a");                           // c1 is now a:0,b:0
-//! assert!(c1 < c2, "c1 is a parent of c2");
+//! assert!(c1 < c2, "c1 should be a child of c2");
 //! ```
 //!
 //! Here is how to generate a conflict:
@@ -39,18 +39,18 @@
 //! // Now let's assert there is a relationship c1 -> c2 and c1 -> c3.
 //! // By relationship, we mean that there is a forward path of updates
 //! // using incr() or next() from one member to the other.
-//! assert!(c1<=c2, "c1={} is a parent of c2={}", c1, c2);
-//! assert!(c2>=c1, "c2={} is a child of c1={}", c2, c1);
-//! assert!(c1<=c3, "c1={} c1 is a parent of c3={}", c1, c3);
-//! assert!(c3>=c1, "c3={} c1 is a child of c1={}", c3, c1);
+//! assert!(c1<=c2, "c1={} should be a child of c2={}", c1, c2);
+//! assert!(c2>=c1, "c2={} should be a parent of c1={}", c2, c1);
+//! assert!(c1<=c3, "c1={} c1 should be a child of c3={}", c1, c3);
+//! assert!(c3>=c1, "c3={} c1 should be a parent of c1={}", c3, c1);
 //!
 //! // But there is no relationship between c2 and c3.
 //! // In a distributed system with concurrent updates of an object,
 //! // this allows the detection of a conflict.
-//! assert!(!(c2<=c3), "c2={} is not a parent of c3={}", c2, c3);
-//! assert!(!(c2>=c3), "c2={} is not a child of c3={}", c2, c3);
-//! assert!(!(c3<=c2), "c3={} is not a parent of c2={}", c3, c2);
-//! assert!(!(c3>=c2), "c3={} is not a child of c2={}", c3, c2);
+//! assert!(!(c2<=c3), "c2={} should not be a child of c3={}", c2, c3);
+//! assert!(!(c2>=c3), "c2={} should not be a parent of c3={}", c2, c3);
+//! assert!(!(c3<=c2), "c3={} should not be a child of c2={}", c3, c2);
+//! assert!(!(c3>=c2), "c3={} should not be a parent of c2={}", c3, c2);
 //! ```
 //!
 //! Also, two objects having a different history path, but the same
