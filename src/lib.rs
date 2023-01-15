@@ -1,4 +1,6 @@
-//! [VClock](https://gitlab.com/liberecofr/vclock) is an experimental vector clock implementated in [Rust](https://www.rust-lang.org/).
+// Copyright (C) 2023 Christian Mauduit <ufoot@ufoot.org>
+
+//! [VClock](https://gitlab.com/liberecofr/vclock) is a vector clock implementated in [Rust](https://www.rust-lang.org/).
 //!
 //! It offers a [partial order of events in a distributed system](https://en.wikipedia.org/wiki/Vector_clock).
 //! In practice, it implements [the rust partial order trait](https://doc.rust-lang.org/stable/std/cmp/trait.PartialOrd.html) over hash maps which maintain an integer count of each modification, per key.
@@ -12,9 +14,9 @@
 //! ```
 //! use vclock::VClock;
 //!
-//! let c1 = VClock::<&str, u64>::new("a"); // c1 is now a:0
-//! let mut c2 = VClock::new("b");          // c2 is now b:0
-//! c2.incr("a");                           // c1 is now a:0,b:0
+//! let c1 = VClock::<&str, u64>::new("a");  // c1 is now a:0
+//! let mut c2 = VClock::new("b");           // c2 is now b:0
+//! c2.incr(&"a");                           // c1 is now a:0,b:0
 //! assert!(c1 < c2, "c1 is a parent of c2");
 //! ```
 //!
@@ -25,14 +27,14 @@
 //!
 //! let mut c1: VClock<&str>=VClock::default();
 //!
-//! c1.incr("a");
-//! c1.incr("a");
-//! c1.incr("a");
-//! c1.incr("a");
-//! c1.incr("b"); // c1 is now a:3, b:0
+//! c1.incr(&"a");
+//! c1.incr(&"a");
+//! c1.incr(&"a");
+//! c1.incr(&"a");
+//! c1.incr(&"b"); // c1 is now a:3, b:0
 //!
-//! let c2 = c1.clone().next("a"); // c2 is now a:4,b:0
-//! let c3 = c1.clone().next("b"); // c3 is now a:3,b:1
+//! let c2 = c1.clone().next(&"a"); // c2 is now a:4,b:0
+//! let c3 = c1.clone().next(&"b"); // c3 is now a:3,b:1
 //!
 //! // Now let's assert there is a relationship c1 -> c2 and c1 -> c3.
 //! // By relationship, we mean that there is a forward path of updates
@@ -60,10 +62,10 @@
 //!
 //! let mut c1 = VClock::<&str, u64>::new("a"); // c1 is now a:0
 //! let mut c2 = VClock::<&str, u64>::new("b"); // c2 is now b:0
-//! c1.incr("c"); // c1 is now a:0, c:0
-//! c1.incr("b"); // c1 is now a:0, b:0, c:0
-//! c2.incr("a"); // c2 is now a:0, b:0, which is a value c1 never had
-//! c2.incr("c"); // c2 is now a:0, b:0, c:0
+//! c1.incr(&"c"); // c1 is now a:0, c:0
+//! c1.incr(&"b"); // c1 is now a:0, b:0, c:0
+//! c2.incr(&"a"); // c2 is now a:0, b:0, which is a value c1 never had
+//! c2.incr(&"c"); // c2 is now a:0, b:0, c:0
 //!
 //! // The following test shows clocks are considered the same.
 //! // In a distributed system using vector clocks, only one agent
@@ -132,6 +134,24 @@
 //! let c4 = VClock::<String>::from(h4);
 //! assert_eq!(Some((100, c4)), obj.update(&c3, 50), "conflict between keys");
 //! ```
+//!
+//! Use custom types:
+//!
+//! ```
+//! use vclock::VClock;
+//! use num_bigint::BigUint;
+//! use std::hash::Hash;
+//!
+//! #[derive(Hash, Eq, PartialEq, Clone)]
+//! struct Coord{
+//!     x: isize,
+//!     y: isize,
+//! }
+//!
+//! let key = Coord{x: 1, y: 2};
+//! let mut c1 = VClock::<Coord, BigUint>::default();
+//! c1.incr(&key); // BigUint, can grow infinitely... (almost)
+//! ```
 
 extern crate serde;
 
@@ -144,6 +164,96 @@ use std::ops::{Add, AddAssign};
 
 use serde::{Deserialize, Serialize};
 
+/// A vector clock using a u8 counter.
+///
+/// # Examples
+///
+/// ```
+/// use vclock::VClock8;
+///
+/// // key type can be inferred
+/// let mut c = VClock8::default();
+/// c.incr(&"a");
+/// c.incr(&"a");
+/// c.incr(&"b");
+/// assert_eq!(Some(1), c.get(&"a"));
+/// assert_eq!(Some(0), c.get(&"b"));
+/// assert_eq!(None, c.get(&"c"));
+/// ```
+pub type VClock8<K> = VClock<K, u8>;
+
+/// A vector clock using a u16 counter.
+///
+/// # Examples
+///
+/// ```
+/// use vclock::VClock16;
+///
+/// // key type can be inferred
+/// let mut c = VClock16::default();
+/// c.incr(&"a");
+/// c.incr(&"a");
+/// c.incr(&"b");
+/// assert_eq!(Some(1), c.get(&"a"));
+/// assert_eq!(Some(0), c.get(&"b"));
+/// assert_eq!(None, c.get(&"c"));
+/// ```
+pub type VClock16<K> = VClock<K, u16>;
+
+/// A vector clock using a u32 counter.
+///
+/// # Examples
+///
+/// ```
+/// use vclock::VClock32;
+///
+/// // key type can be inferred
+/// let mut c = VClock32::default();
+/// c.incr(&"a");
+/// c.incr(&"a");
+/// c.incr(&"b");
+/// assert_eq!(Some(1), c.get(&"a"));
+/// assert_eq!(Some(0), c.get(&"b"));
+/// assert_eq!(None, c.get(&"c"));
+/// ```
+pub type VClock32<K> = VClock<K, u32>;
+
+/// A vector clock using a u64 counter.
+///
+/// # Examples
+///
+/// ```
+/// use vclock::VClock64;
+///
+/// // key type can be inferred
+/// let mut c = VClock64::default();
+/// c.incr(&"a");
+/// c.incr(&"a");
+/// c.incr(&"b");
+/// assert_eq!(Some(1), c.get(&"a"));
+/// assert_eq!(Some(0), c.get(&"b"));
+/// assert_eq!(None, c.get(&"c"));
+/// ```
+pub type VClock64<K> = VClock<K, u64>;
+
+/// A vector clock using a u128 counter.
+///
+/// # Examples
+///
+/// ```
+/// use vclock::VClock128;
+///
+/// // key type can be inferred
+/// let mut c = VClock128::default();
+/// c.incr(&"a");
+/// c.incr(&"a");
+/// c.incr(&"b");
+/// assert_eq!(Some(1), c.get(&"a"));
+/// assert_eq!(Some(0), c.get(&"b"));
+/// assert_eq!(None, c.get(&"c"));
+/// ```
+pub type VClock128<K> = VClock<K, u128>;
+
 /// VClock encapsulates the vector clock data. Internally it's just
 /// a simple hash map containing integers.
 ///
@@ -153,11 +263,11 @@ use serde::{Deserialize, Serialize};
 /// use vclock::VClock;
 ///
 /// let mut c: VClock<&str>=VClock::default();
-/// c.incr("a");
-/// c.incr("a");
-/// c.incr("a");
-/// c.incr("a");
-/// c.incr("b");
+/// c.incr(&"a");
+/// c.incr(&"a");
+/// c.incr(&"a");
+/// c.incr(&"a");
+/// c.incr(&"b");
 /// assert_eq!(Some(3), c.get(&"a"));
 /// assert_eq!(Some(0), c.get(&"b"));
 /// assert_eq!(None, c.get(&"c"));
@@ -165,7 +275,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize, Clone)]
 pub struct VClock<K = usize, I = usize>
 where
-    K: Eq + Hash,
+    K: Eq + Hash + Clone,
     I: Add<I, Output = I> + AddAssign<I> + From<u8> + Ord + Default + Clone,
 {
     c: HashMap<K, I>,
@@ -173,7 +283,7 @@ where
 
 impl<K, I> VClock<K, I>
 where
-    K: Eq + Hash,
+    K: Eq + Hash + Clone,
     I: Add<I, Output = I> + AddAssign<I> + From<u8> + Ord + Default + Clone,
 {
     /// Initialize a new vector clock with only one contributor.
@@ -204,14 +314,14 @@ where
     /// use vclock::VClock;
     ///
     /// let mut c = VClock::new("foo"); // c is now foo:0
-    /// c.incr("foo"); // c is now foo:1
-    /// c.incr("bar"); // c is now foo:1, bar:0
-    /// assert_eq!(1, c.get("foo").unwrap());
-    /// assert_eq!(0, c.get("bar").unwrap());
-    /// assert_eq!(None, c.get("unknown"));
+    /// c.incr(&"foo"); // c is now foo:1
+    /// c.incr(&"bar"); // c is now foo:1, bar:0
+    /// assert_eq!(1, c.get(&"foo").unwrap());
+    /// assert_eq!(0, c.get(&"bar").unwrap());
+    /// assert_eq!(None, c.get(&"unknown"));
     /// ```
-    pub fn get(&self, key: K) -> Option<I> {
-        match self.c.get(&key) {
+    pub fn get(&self, key: &K) -> Option<I> {
+        match self.c.get(key) {
             Some(v) => Some(v.clone()),
             None => None,
         }
@@ -226,11 +336,11 @@ where
     ///
     /// let mut c = VClock::<&str, u8>::default();
     /// assert_eq!(0, c.len());
-    /// c.incr("foo");
+    /// c.incr(&"foo");
     /// assert_eq!(1, c.len());
-    /// c.incr("foo");
+    /// c.incr(&"foo");
     /// assert_eq!(1, c.len());
-    /// c.incr("bar");
+    /// c.incr(&"bar");
     /// assert_eq!(2, c.len());
     /// ```
     pub fn len(&self) -> usize {
@@ -248,17 +358,17 @@ where
     /// ```
     /// use vclock::VClock;
     ///
-    /// let mut c = VClock::default();
+    /// let mut c = VClock::<&str, u32>::default();
     /// assert_eq!(0, c.weight());
-    /// c.incr("foo");
+    /// c.incr(&"foo");
     /// assert_eq!(1, c.weight());
-    /// c.incr("foo");
+    /// c.incr(&"foo");
     /// assert_eq!(2, c.weight());
-    /// c.incr("foo");
+    /// c.incr(&"foo");
     /// assert_eq!(3, c.weight());
-    /// c.incr("bar");
+    /// c.incr(&"bar");
     /// assert_eq!(4, c.weight());
-    /// c.incr("bar");
+    /// c.incr(&"bar");
     /// assert_eq!(5, c.weight());
     /// ```
     pub fn weight(&self) -> I {
@@ -282,11 +392,11 @@ where
     ///
     /// let mut c = VClock::default();
     /// assert_eq!(None, c.max());
-    /// c.incr("foo");
+    /// c.incr(&"foo");
     /// assert_eq!((&"foo", 0), c.max().unwrap());
-    /// c.incr("foo");
+    /// c.incr(&"foo");
     /// assert_eq!((&"foo", 1), c.max().unwrap());
-    /// c.incr("bar");
+    /// c.incr(&"bar");
     /// assert_eq!((&"foo", 1), c.max().unwrap());
     /// ```
     pub fn max(&self) -> Option<(&K, I)> {
@@ -312,16 +422,16 @@ where
     /// use vclock::VClock;
     ///
     /// let mut c = VClock::<&str, u64>::new("foo"); // c is now foo:0
-    /// c.incr("foo"); // c is now foo:1
-    /// c.incr("bar"); // c is now foo:1, bar:0
+    /// c.incr(&"foo"); // c is now foo:1
+    /// c.incr(&"bar"); // c is now foo:1, bar:0
     /// assert_eq!("{len: 2, weight: 3, max: {\"foo\": 1}}", format!("{}", c));
     /// ```
-    pub fn incr(&mut self, key: K) {
-        let value = match self.c.get(&key) {
+    pub fn incr(&mut self, key: &K) {
+        let value = match self.c.get(key) {
             Some(v) => v.clone() + I::from(1),
             None => I::default(),
         };
-        self.c.insert(key, value);
+        self.c.insert(key.clone(), value);
     }
 
     /// Increments a vector clock. This is pretty much the same as incr
@@ -332,23 +442,16 @@ where
     /// ```
     /// use vclock::VClock;
     //
-    /// let c1 = VClock::new("a");
-    /// let c2 = c1.clone().next("a").next("b");
-    /// assert_eq!(1, c2.get("a").unwrap());
-    /// assert_eq!(0, c2.get("b").unwrap());
+    /// let c1 = VClock::<&str, u16>::new("a");
+    /// let c2 = c1.clone().next(&"a").next(&"b");
+    /// assert_eq!(1, c2.get(&"a").unwrap());
+    /// assert_eq!(0, c2.get(&"b").unwrap());
     /// ```
-    pub fn next(mut self, key: K) -> VClock<K, I> {
+    pub fn next(mut self, key: &K) -> VClock<K, I> {
         self.incr(key);
         self
     }
-}
 
-// Merge & combine operations do need K to have Clone trait.
-impl<K, I> VClock<K, I>
-where
-    K: Eq + Hash + Clone,
-    I: Add<I, Output = I> + AddAssign<I> + From<u8> + Ord + Default + Clone,
-{
     /// Merge a key with another one, in-place, taking the max of all history points.
     ///
     /// If there is a parentship between a and b, just take the greater of both.
@@ -358,11 +461,11 @@ where
     /// ```
     /// use vclock::VClock;
     ///
-    /// let mut c1 = VClock::new("a");
-    /// let c2 = VClock::new("b");
+    /// let mut c1 = VClock::<&str, u32>::new("a");
+    /// let c2 = VClock::<&str, u32>::new("b");
     /// c1.merge(&c2);
-    /// assert_eq!(0, c1.get("a").unwrap());
-    /// assert_eq!(0, c1.get("b").unwrap());
+    /// assert_eq!(Some(0), c1.get(&"a"));
+    /// assert_eq!(Some(0), c1.get(&"b"));
     /// ```
     pub fn merge(&mut self, other: &VClock<K, I>) {
         // copy all the existing keys for other, which are not the key we increment
@@ -387,12 +490,12 @@ where
     /// use vclock::VClock;
     ///
     /// let c1 = VClock::new("a");
-    /// let c2 = VClock::new("b").next("b");
+    /// let c2 = VClock::new("b").next(&"b");
     /// let c3 = VClock::new("c");
     /// let c4 = c1.combine(&c2).combine(&c3);
-    /// assert_eq!(0, c4.get("a").unwrap());
-    /// assert_eq!(1, c4.get("b").unwrap());
-    /// assert_eq!(0, c4.get("c").unwrap());
+    /// assert_eq!(0, c4.get(&"a").unwrap());
+    /// assert_eq!(1, c4.get(&"b").unwrap());
+    /// assert_eq!(0, c4.get(&"c").unwrap());
     /// ```
     pub fn combine(mut self, other: &VClock<K, I>) -> VClock<K, I> {
         self.merge(other);
@@ -407,7 +510,7 @@ where
 /// no way to directly go to one point from the other.
 impl<K, I> std::cmp::PartialOrd for VClock<K, I>
 where
-    K: Eq + Hash,
+    K: Eq + Hash + Clone,
     I: Add<I, Output = I> + AddAssign<I> + From<u8> + Ord + Default + Clone,
 {
     /// Compares the vector clock with another one. Note that really,
@@ -427,14 +530,14 @@ where
     /// assert!(c1 <= c2);
     ///
     /// // Two vector clocks with a direct parentship are ordered.
-    /// c2.incr("a");
+    /// c2.incr(&"a");
     /// assert_eq!(Some(Ordering::Less), c1.partial_cmp(&c2));
     /// assert_eq!(Some(Ordering::Greater), c2.partial_cmp(&c1));
     /// assert!(c1 < c2);
     /// assert!(c2 > c1);
     ///
     /// // Two vector clocks without a direct parentship are not ordered.
-    /// c1.incr("b");
+    /// c1.incr(&"b");
     /// assert_eq!(None, c1.partial_cmp(&c2));
     /// assert_eq!(None, c2.partial_cmp(&c1));
     /// assert!(!(c1 < c2));
@@ -516,7 +619,7 @@ where
 
 impl<K, I> From<HashMap<K, I>> for VClock<K, I>
 where
-    K: Eq + Hash,
+    K: Eq + Hash + Clone,
     I: Add<I, Output = I> + AddAssign<I> + From<u8> + Ord + Default + Clone,
 {
     /// Build a vector clock from a hash map containing u64 values.
@@ -532,8 +635,8 @@ where
     /// m.insert("b", 5u64);
     /// let c = VClock::from(m);
     /// assert_eq!(2, c.len());
-    /// assert_eq!(3, c.get("a").unwrap());
-    /// assert_eq!(5, c.get("b").unwrap());
+    /// assert_eq!(3, c.get(&"a").unwrap());
+    /// assert_eq!(5, c.get(&"b").unwrap());
     /// ```
     fn from(src: HashMap<K, I>) -> VClock<K, I> {
         VClock { c: src }
@@ -542,7 +645,7 @@ where
 
 impl<K, I> From<VClock<K, I>> for HashMap<K, I>
 where
-    K: Eq + Hash,
+    K: Eq + Hash + Clone,
     I: Add<I, Output = I> + AddAssign<I> + From<u8> + Ord + Default + Clone,
 {
     /// Build a vector clock from a hash map containing u64 values.
@@ -554,13 +657,13 @@ where
     /// use std::collections::HashMap;
     ///
     /// let mut c = VClock::default();
-    /// c.incr("a");
-    /// c.incr("a");
-    /// c.incr("b");
+    /// c.incr(&"a");
+    /// c.incr(&"a");
+    /// c.incr(&"b");
     /// let m = HashMap::from(c);
     /// assert_eq!(2, m.len());
-    /// assert_eq!(Some(&1), m.get("a"));
-    /// assert_eq!(Some(&0), m.get("b"));
+    /// assert_eq!(Some(&1), m.get(&"a"));
+    /// assert_eq!(Some(&0), m.get(&"b"));
     /// ```
     fn from(src: VClock<K, I>) -> HashMap<K, I> {
         src.c
@@ -569,7 +672,7 @@ where
 
 impl<K, I> std::fmt::Display for VClock<K, I>
 where
-    K: Eq + Hash + std::fmt::Display,
+    K: Eq + Hash + Clone + std::fmt::Display,
     I: Add<I, Output = I> + AddAssign<I> + From<u8> + Ord + Default + Clone + std::fmt::Display,
 {
     /// Pretty print the vector clock, it does not dump all the data,
@@ -582,10 +685,10 @@ where
     ///
     /// let mut c = VClock::<&str, usize>::default();
     /// assert_eq!("{len: 0, weight: 0}", format!("{}", c));
-    /// c.incr("a");
+    /// c.incr(&"a");
     /// assert_eq!("{len: 1, weight: 1, max: {\"a\": 0}}", format!("{}", c));
-    /// c.incr("b");
-    /// c.incr("b");
+    /// c.incr(&"b");
+    /// c.incr(&"b");
     /// assert_eq!("{len: 2, weight: 3, max: {\"b\": 1}}", format!("{}", c));
     /// ```
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -607,7 +710,7 @@ where
 
 impl<K, I> std::default::Default for VClock<K, I>
 where
-    K: Eq + Hash,
+    K: Eq + Hash + Clone,
     I: Add<I, Output = I> + AddAssign<I> + From<u8> + Ord + Default + Clone,
 {
     /// Return a VClock with no history at all.
@@ -643,68 +746,72 @@ mod tests {
     #[test]
     fn test_vclock_new() {
         let vc1 = VClock::new(17);
-        assert_eq!(None, vc1.get(0));
-        assert_eq!(Some(0), vc1.get(17));
+        assert_eq!(None, vc1.get(&0));
+        assert_eq!(Some(0), vc1.get(&17));
 
         let vc2 = VClock::<u32>::new(17u32);
-        assert_eq!(None, vc2.get(0u32));
-        assert_eq!(Some(0usize), vc2.get(17u32));
+        assert_eq!(None, vc2.get(&0u32));
+        assert_eq!(Some(0usize), vc2.get(&17u32));
 
         let vc3 = VClock::<i64, u8>::new(17i64);
-        assert_eq!(None, vc3.get(0i64));
-        assert_eq!(Some(0u8), vc3.get(17i64));
+        assert_eq!(None, vc3.get(&0i64));
+        assert_eq!(Some(0u8), vc3.get(&17i64));
+
+        let vc4 = VClock::<i64, i16>::new(17i64);
+        assert_eq!(None, vc4.get(&0i64));
+        assert_eq!(Some(0i16), vc4.get(&17i64));
     }
 
     #[test]
     fn test_vclock_incr() {
         let mut vc = VClock::<i16>::default();
-        assert_eq!(None, vc.get(0));
+        assert_eq!(None, vc.get(&0));
 
-        vc.incr(2);
-        assert_eq!(None, vc.get(0));
-        assert_eq!(Some(0), vc.get(2));
+        vc.incr(&2);
+        assert_eq!(None, vc.get(&0));
+        assert_eq!(Some(0), vc.get(&2));
 
-        vc.incr(2);
-        assert_eq!(None, vc.get(0));
-        assert_eq!(Some(1), vc.get(2));
+        vc.incr(&2);
+        assert_eq!(None, vc.get(&0));
+        assert_eq!(Some(1), vc.get(&2));
 
-        vc.incr(3);
-        assert_eq!(None, vc.get(0));
-        assert_eq!(Some(1), vc.get(2));
-        assert_eq!(Some(0), vc.get(3));
+        vc.incr(&3);
+        assert_eq!(None, vc.get(&0));
+        assert_eq!(Some(1), vc.get(&2));
+        assert_eq!(Some(0), vc.get(&3));
     }
 
     #[test]
     fn test_vclock_next() {
         let vc = VClock::<i16>::default();
-        assert_eq!(None, vc.get(0));
+        assert_eq!(None, vc.get(&0));
 
-        let vc2 = vc.clone().next(2);
-        assert_eq!(None, vc.get(0));
-        assert_eq!(None, vc.get(2));
-        assert_eq!(Some(0), vc2.get(2));
+        let vc2 = vc.clone().next(&2);
+        assert_eq!(None, vc.get(&0));
+        assert_eq!(None, vc.get(&2));
+        assert_eq!(Some(0), vc2.get(&2));
 
-        let vc3 = vc.clone().next(3);
-        assert_eq!(None, vc.get(0));
-        assert_eq!(None, vc.get(2));
-        assert_eq!(None, vc.get(3));
-        assert_eq!(Some(0), vc2.get(2));
-        assert_eq!(Some(0), vc3.get(3));
+        let vc3 = vc.clone().next(&3);
+        assert_eq!(None, vc.get(&0));
+        assert_eq!(None, vc.get(&2));
+        assert_eq!(None, vc.get(&3));
+        assert_eq!(Some(0), vc2.get(&2));
+        assert_eq!(Some(0), vc3.get(&3));
 
-        let vc3i = vc3.clone().next(3);
-        assert_eq!(None, vc.get(0));
-        assert_eq!(None, vc.get(2));
-        assert_eq!(None, vc.get(3));
-        assert_eq!(Some(0), vc2.get(2));
-        assert_eq!(Some(1), vc3i.get(3));
+        let vc3i = vc3.clone().next(&3);
+        assert_eq!(None, vc.get(&0));
+        assert_eq!(None, vc.get(&2));
+        assert_eq!(None, vc.get(&3));
+        assert_eq!(Some(0), vc2.get(&2));
+        assert_eq!(Some(1), vc3i.get(&3));
     }
 
     #[test]
     fn test_vclock_debug() {
         let vc = VClock::<i16>::default();
-        let vca = vc.next(42);
-        let vcb = vca.next(42);
-        let vcc = vcb.next(42);
+        let vca = vc.next(&42);
+        let vcb = vca.next(&42);
+        let vcc = vcb.next(&42);
         let repr = format!("{:?}", vcc);
         assert_eq!("VClock { c: {42: 2} }", repr);
     }
@@ -716,28 +823,28 @@ mod tests {
         assert_eq!(vca, vcb);
         assert_eq!(Some(Ordering::Equal), vca.partial_cmp(&vcb));
         assert_eq!(Some(Ordering::Equal), vcb.partial_cmp(&vca));
-        vcb.incr(2);
+        vcb.incr(&2);
         assert_eq!(Some(Ordering::Less), vca.partial_cmp(&vcb));
         assert_eq!(Some(Ordering::Greater), vcb.partial_cmp(&vca));
-        vca.incr(2);
+        vca.incr(&2);
         assert_eq!(Some(Ordering::Equal), vca.partial_cmp(&vcb));
         assert_eq!(Some(Ordering::Equal), vcb.partial_cmp(&vca));
-        vca.incr(2);
+        vca.incr(&2);
         assert_eq!(Some(Ordering::Greater), vca.partial_cmp(&vcb));
         assert_eq!(Some(Ordering::Less), vcb.partial_cmp(&vca));
-        vca.incr(3);
-        vca.incr(3);
-        vca.incr(3);
-        vcb.incr(3);
-        vcb.incr(3);
-        vcb.incr(3);
+        vca.incr(&3);
+        vca.incr(&3);
+        vca.incr(&3);
+        vcb.incr(&3);
+        vcb.incr(&3);
+        vcb.incr(&3);
         assert_eq!(Some(Ordering::Greater), vca.partial_cmp(&vcb));
         assert_eq!(Some(Ordering::Less), vcb.partial_cmp(&vca));
-        vca.incr(4);
+        vca.incr(&4);
         assert_eq!(Some(Ordering::Greater), vca.partial_cmp(&vcb));
         assert_eq!(Some(Ordering::Less), vcb.partial_cmp(&vca));
-        vcb.incr(4);
-        vcb.incr(4);
+        vcb.incr(&4);
+        vcb.incr(&4);
         assert_eq!(None, vca.partial_cmp(&vcb));
         assert_eq!(None, vcb.partial_cmp(&vca));
     }
@@ -746,14 +853,14 @@ mod tests {
     fn test_vclock_fmt() {
         let mut k = VClock::<i32>::default();
         assert_eq!(String::from("{len: 0, weight: 0}"), format!("{}", k));
-        k.incr(42);
+        k.incr(&42);
         assert_eq!(
             String::from("{len: 1, weight: 1, max: {\"42\": 0}}"),
             format!("{}", k)
         );
-        k.incr(421);
-        k.incr(421);
-        k.incr(421);
+        k.incr(&421);
+        k.incr(&421);
+        k.incr(&421);
         assert_eq!(
             String::from("{len: 2, weight: 4, max: {\"421\": 2}}"),
             format!("{}", k)
@@ -780,5 +887,17 @@ mod tests {
         let buf: Vec<u8> = serde_cbor::to_vec(&vc).unwrap();
         let obj: VClock<i32> = serde_cbor::from_slice(&buf).unwrap();
         assert_eq!(vc, obj);
+    }
+
+    #[test]
+    fn test_vclock_bigint() {
+        let mut vc1 = VClock::<&str, BigUint>::default();
+        assert_eq!(None, vc1.get(&"not here"));
+        vc1.incr(&"k1");
+        vc1.incr(&"k1");
+        vc1.incr(&"k1");
+        assert_eq!("{len: 1, weight: 3, max: {\"k1\": 2}}", format!("{}", &vc1));
+        let vc2 = vc1.clone().next(&"k2");
+        assert!(vc1 < vc2);
     }
 }
