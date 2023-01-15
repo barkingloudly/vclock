@@ -26,7 +26,7 @@ use vclock::VClock64;
 let c1 = VClock64::new("a");      // c1 is now a:0
 let mut c2 = VClock64::new("b");  // c2 is now b:0
 c2.incr(&"a");                    // c1 is now a:1,b:0
-assert!(c1 < c2, "c1 is a parent of c2");
+assert!(c1 < c2, "c2 is a parent of c1");
 ```
 
 # Benchmarks

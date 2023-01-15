@@ -153,16 +153,14 @@
 //! c1.incr(&key); // BigUint, can grow infinitely... (almost)
 //! ```
 
-extern crate serde;
-
+#[cfg(feature = "bigint")]
+use num_bigint::BigUint;
 use std::clone::Clone;
 use std::cmp::Eq;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::ops::{Add, AddAssign};
-
-use serde::{Deserialize, Serialize};
 
 /// A vector clock using a u8 counter.
 ///
@@ -254,6 +252,29 @@ pub type VClock64<K> = VClock<K, u64>;
 /// ```
 pub type VClock128<K> = VClock<K, u128>;
 
+/// A vector clock using a bigint counter.
+///
+/// Requires feature "bigint".
+///
+/// # Examples
+///
+/// ```
+/// use vclock::VClockBig;
+///
+/// // key type can be inferred
+/// let mut c = VClockBig::default();
+/// c.incr(&"a");
+/// c.incr(&"a");
+/// c.incr(&"a");
+/// c.incr(&"b");
+/// c.incr(&"b");
+/// assert_eq!(2, c.get(&"a").unwrap().to_u64_digits()[0]);
+/// assert_eq!(1, c.get(&"b").unwrap().to_u64_digits()[0]);
+/// assert_eq!(None, c.get(&"c"));
+/// ```
+#[cfg(feature = "bigint")]
+pub type VClockBig<K> = VClock<K, BigUint>;
+
 /// VClock encapsulates the vector clock data. Internally it's just
 /// a simple hash map containing integers.
 ///
@@ -272,7 +293,8 @@ pub type VClock128<K> = VClock<K, u128>;
 /// assert_eq!(Some(0), c.get(&"b"));
 /// assert_eq!(None, c.get(&"c"));
 /// ```
-#[derive(Debug, Eq, PartialEq, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct VClock<K = usize, I = usize>
 where
     K: Eq + Hash + Clone,
@@ -867,6 +889,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "serde")]
     #[test]
     fn test_vclock_serde_json() {
         let vc = VClock::<i32>::new(42);
@@ -881,6 +904,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "serde")]
     #[test]
     fn test_vclock_serde_cbor() {
         let vc = VClock::<i32>::new(42);
@@ -892,6 +916,19 @@ mod tests {
     #[test]
     fn test_vclock_bigint() {
         let mut vc1 = VClock::<&str, BigUint>::default();
+        assert_eq!(None, vc1.get(&"not here"));
+        vc1.incr(&"k1");
+        vc1.incr(&"k1");
+        vc1.incr(&"k1");
+        assert_eq!("{len: 1, weight: 3, max: {\"k1\": 2}}", format!("{}", &vc1));
+        let vc2 = vc1.clone().next(&"k2");
+        assert!(vc1 < vc2);
+    }
+
+    #[cfg(feature = "bigint")]
+    #[test]
+    fn test_vclock_big_type() {
+        let mut vc1 = VClockBig::default();
         assert_eq!(None, vc1.get(&"not here"));
         vc1.incr(&"k1");
         vc1.incr(&"k1");

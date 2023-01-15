@@ -28,6 +28,16 @@ test:
   script:
     - cargo test
 
+test_serde:
+  stage: test
+  script:
+    - cargo test --features=serde
+
+test_bigint:
+  stage: test
+  script:
+    - cargo test --features=bigint
+
 bench:
   image: rustlang/rust:nightly
   stage: test
