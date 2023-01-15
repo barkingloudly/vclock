@@ -29,9 +29,33 @@ c2.incr(&"a");                    // c1 is now a:1,b:0
 assert!(c1 < c2, "c2 is a parent of c1");
 ```
 
+Package has two optional features:
+
+* `serde` to enable [Serde](https://serde.rs/) support ((de)serialization)
+* `bigint` to enable [big integers](https://crates.io/crates/num_bigint) support and have "infinite" vector clocks.
+
 # Benchmarks
 
-[TODO...]
+Taken from a random CI job:
+
+```
+running 10 tests
+test tests::bench_vclock64_int_cmp_10    ... bench:         245 ns/iter (+/- 1)
+test tests::bench_vclock64_int_cmp_100   ... bench:       2,627 ns/iter (+/- 27)
+test tests::bench_vclock64_int_cmp_1000  ... bench:      25,777 ns/iter (+/- 635)
+test tests::bench_vclock64_int_cmp_10000 ... bench:     272,944 ns/iter (+/- 5,407)
+test tests::bench_vclock64_int_incr      ... bench:          36 ns/iter (+/- 0)
+test tests::bench_vclock64_str_cmp_10    ... bench:         530 ns/iter (+/- 17)
+test tests::bench_vclock64_str_cmp_100   ... bench:       3,365 ns/iter (+/- 62)
+test tests::bench_vclock64_str_cmp_1000  ... bench:      36,188 ns/iter (+/- 654)
+test tests::bench_vclock64_str_cmp_10000 ... bench:     648,599 ns/iter (+/- 15,388)
+test tests::bench_vclock64_str_incr      ... bench:          53 ns/iter (+/- 1)
+test result: ok. 0 passed; 0 failed; 0 ignored; 10 measured; 0 filtered out; finished in 4.96s
+```
+
+This is not the result of thorough, intensive benchmarking, but we can at least
+infer that one significant game changer is the length of the vector clocks.
+It grows more or less linearily as their size increases.
 
 # Links
 

@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 
 vclock = { path = ".." }
+num-bigint = "0.4"
