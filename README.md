@@ -31,8 +31,8 @@ assert!(c1 < c2, "c1 should be a child of c2");
 
 Package has two optional features:
 
-* `serde` to enable [Serde](https://serde.rs/) support ((de)serialization)
-* `bigint` to enable [big integers](https://crates.io/crates/num_bigint) support and have "infinite" vector clocks.
+* `serde` to enable [Serde](https://serde.rs/) support for (de)serialization
+* `bigint` to enable [big integers](https://crates.io/crates/num_bigint) support and have "infinite" vector clocks
 
 # Benchmarks
 
