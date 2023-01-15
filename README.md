@@ -25,7 +25,7 @@ use vclock::VClock64;
 
 let c1 = VClock64::new("a");      // c1 is now a:0
 let mut c2 = VClock64::new("b");  // c2 is now b:0
-c2.incr(&"a");                    // c1 is now a:1,b:0
+c2.incr(&"a");                    // c1 is now a:1, b:0
 assert!(c1 < c2, "c2 is a parent of c1");
 ```
 
@@ -39,22 +39,27 @@ Package has two optional features:
 Taken from a random CI job:
 
 ```
-running 10 tests
-test tests::bench_vclock64_int_cmp_10    ... bench:         245 ns/iter (+/- 1)
-test tests::bench_vclock64_int_cmp_100   ... bench:       2,627 ns/iter (+/- 27)
-test tests::bench_vclock64_int_cmp_1000  ... bench:      25,777 ns/iter (+/- 635)
-test tests::bench_vclock64_int_cmp_10000 ... bench:     272,944 ns/iter (+/- 5,407)
-test tests::bench_vclock64_int_incr      ... bench:          36 ns/iter (+/- 0)
-test tests::bench_vclock64_str_cmp_10    ... bench:         530 ns/iter (+/- 17)
-test tests::bench_vclock64_str_cmp_100   ... bench:       3,365 ns/iter (+/- 62)
-test tests::bench_vclock64_str_cmp_1000  ... bench:      36,188 ns/iter (+/- 654)
-test tests::bench_vclock64_str_cmp_10000 ... bench:     648,599 ns/iter (+/- 15,388)
-test tests::bench_vclock64_str_incr      ... bench:          53 ns/iter (+/- 1)
-test result: ok. 0 passed; 0 failed; 0 ignored; 10 measured; 0 filtered out; finished in 4.96s
+running 15 tests
+test tests::bench_vclock64_int_cmp_10     ... bench:         383 ns/iter (+/- 12)
+test tests::bench_vclock64_int_cmp_100    ... bench:       2,889 ns/iter (+/- 78)
+test tests::bench_vclock64_int_cmp_1000   ... bench:      26,221 ns/iter (+/- 384)
+test tests::bench_vclock64_int_cmp_10000  ... bench:     276,902 ns/iter (+/- 3,855)
+test tests::bench_vclock64_int_incr       ... bench:          35 ns/iter (+/- 2)
+test tests::bench_vclock64_str_cmp_10     ... bench:         346 ns/iter (+/- 8)
+test tests::bench_vclock64_str_cmp_100    ... bench:       3,104 ns/iter (+/- 87)
+test tests::bench_vclock64_str_cmp_1000   ... bench:      36,570 ns/iter (+/- 2,054)
+test tests::bench_vclock64_str_cmp_10000  ... bench:     663,951 ns/iter (+/- 52,968)
+test tests::bench_vclock64_str_incr       ... bench:          53 ns/iter (+/- 10)
+test tests::bench_vclockbig_str_cmp_10    ... bench:         548 ns/iter (+/- 11)
+test tests::bench_vclockbig_str_cmp_100   ... bench:       3,945 ns/iter (+/- 96)
+test tests::bench_vclockbig_str_cmp_1000  ... bench:      37,310 ns/iter (+/- 3,270)
+test tests::bench_vclockbig_str_cmp_10000 ... bench:     688,678 ns/iter (+/- 157,335)
+test tests::bench_vclockbig_str_incr      ... bench:         113 ns/iter (+/- 4)
+test result: ok. 0 passed; 0 failed; 0 ignored; 15 measured; 0 filtered out; finished in 11.35s
 ```
 
 This is not the result of thorough, intensive benchmarking, but we can at least
-infer that one significant game changer is the length of the vector clocks.
+infer that one significant game changer, when comparing, is the length of the vector clocks.
 It grows more or less linearily as their size increases.
 
 # Links
