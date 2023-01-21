@@ -1,6 +1,6 @@
 [package]
 name = "vclock"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["Christian Mauduit (ufoot) <ufoot@ufoot.org>"]
 edition = "2021"
 description = "VClock is a vector clock."

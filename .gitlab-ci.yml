@@ -31,9 +31,10 @@ test_default:
 test_features:
   stage: test
   script:
-    - cargo test --features=bigint
-    - cargo test --features=serde
-    - cargo test --features=bigint,serde
+    - cargo test --no-default-features
+    - cargo test --no-default-features --features=bigint
+    - cargo test --no-default-features --features=serde
+    - cargo test --no-default-features --features=bigint,serde
 
 bench:
   image: rustlang/rust:nightly
