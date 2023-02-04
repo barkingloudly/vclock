@@ -1,3 +1,5 @@
+2023-02-04: specify min Rust version, tagged 0.4.3
+
 2023-01-21: minor doc update, tagged 0.4.2
 
 2023-01-15: using generic type for counters, tagged 0.4.1
