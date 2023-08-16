@@ -1,7 +1,7 @@
 image: rust:latest
 
 variables:
-  REPO_NAME: gitlab.com/ufoot/vclock
+  REPO_NAME: gitlab.com/liberecofr/vclock
 
 before_script:
   - rustc --version
