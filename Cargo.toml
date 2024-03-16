@@ -1,6 +1,6 @@
 [package]
 name = "vclock"
-version = "0.4.3"
+version = "0.4.4"
 authors = ["Christian Mauduit (ufoot) <ufoot@ufoot.org>"]
 edition = "2021"
 rust-version = "1.60"

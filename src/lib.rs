@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Christian Mauduit <ufoot@ufoot.org>
+// Copyright (C) 2024 Christian Mauduit <ufoot@ufoot.org>
 
 //! [VClock](https://gitlab.com/liberecofr/vclock) is a vector clock implementated in [Rust](https://www.rust-lang.org/).
 //!
